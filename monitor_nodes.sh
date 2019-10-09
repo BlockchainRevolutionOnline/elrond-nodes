@@ -27,9 +27,10 @@ fi
 # output the initialNodesPk, Validator?, Uptime (s), Downtime (s), and nodeDisplayName
 echo
 echo "----------------- ONLINE  NODES -----------------"
-echo -e "initialNodesPk\tVal?\tUp(s)\tDown(s)\tNode name"
+echo -e "initialNodesPk\tVal?\tUp(s)\tDown(s)\ttime\tNode name"
 curl --silent http://localhost:8080/node/heartbeatstatus | eval "grep $grepstring" | grep '"isActive":true' | \
-	jq -s -c --raw-output 'sort_by(.nodeDisplayName)[] | [.hexPublicKey[0:12],.isValidator,.totalUpTimeSec,.totalDownTimeSec,.nodeDisplayName] | @tsv'
+	jq -s -c --raw-output 'sort_by(.nodeDisplayName)[] |
+    [.hexPublicKey[0:12],.isValidator,.totalUpTimeSec,.totalDownTimeSec,.maxInactiveTime,.nodeDisplayName] | @tsv'
 echo
 echo "----------------- OFFLINE NODES -----------------"
 echo -e "initialNodesPk\tVal?\tUp(s)\tDown(s)\tNode name"
