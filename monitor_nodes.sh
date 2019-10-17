@@ -1,8 +1,16 @@
 #/bin/bash
 
+# EXAMPLE:
+# bash monitor_nodes.sh -w			--> shows all offline validator nodes
+# bash monitor_nodes.sh string1 string2 string3	--> shows all nodes with string in their json info
+
 # user needs to specify at least 1 search term as an argument (case sensitive)
 if [ "$#" == 0 ]; then
-	echo "Please specify at least 1 search term, like part of the node display name or initialNodesPk. Exiting script."
+	echo
+	echo "Please specify at least 1 search term, like part of the node display name or initialNodesPk."
+	echo "bash monitor_nodes.sh -w	--> Show all offline validator nodes"
+	echo "Exiting script."
+	echo
 	exit
 fi
 
@@ -13,7 +21,19 @@ fi
 
 # creating the grep command, based on the arguments passed to the script
 if [ "$#" == 1 ]; then
-	grepstring="-o '\{[^\{]*'"$1"'[^\}]*\}'"
+	if [ "$1" == "-w" ]; then
+		echo
+		echo "------------ OFFLINE VALIDATOR NODES ------------"
+		echo -e "initialNodesPk\tVal?\tUp(s)\tDown(s)\tversion\t\t\t\t\t\tShard\tNode name"
+		curl --silent http://localhost:8080/node/heartbeatstatus | \
+		grep -o '\{[^\{]*\"isActive\":false[^\}]*\"isValidator\":true[^\}]*\}' | \
+			jq -s -c --raw-output 'sort_by(.nodeDisplayName)[] | [.hexPublicKey[0:12],.isValidator,.totalUpTimeSec,.totalDownTimeSec,.versionNumber,.receivedShardID,.nodeDisplayName] | @tsv'
+		echo "-------------------------------------------------"
+		echo
+		exit
+	else
+		grepstring="-o '\{[^\{]*'"$1"'[^\}]*\}'"
+	fi
 fi
 if [ "$#" -ge 2 ]; then
 	grepstring="-o -e '\{[^\{]*'"$1"'[^\}]*\}'"
@@ -27,14 +47,13 @@ fi
 # output the initialNodesPk, Validator?, Uptime (s), Downtime (s), and nodeDisplayName
 echo
 echo "----------------- ONLINE  NODES -----------------"
-echo -e "initialNodesPk\tVal?\tUp(s)\tDown(s)\ttime\tNode name"
+echo -e "initialNodesPk\tVal?\tUp(s)\tDown(s)\tversion\t\t\t\t\t\tShard\tNode name"
 curl --silent http://localhost:8080/node/heartbeatstatus | eval "grep $grepstring" | grep '"isActive":true' | \
-	jq -s -c --raw-output 'sort_by(.nodeDisplayName)[] |
-    [.hexPublicKey[0:12],.isValidator,.totalUpTimeSec,.totalDownTimeSec,.maxInactiveTime,.nodeDisplayName] | @tsv'
+	jq -s -c --raw-output 'sort_by(.nodeDisplayName)[] | [.hexPublicKey[0:12],.isValidator,.totalUpTimeSec,.totalDownTimeSec,.versionNumber,.receivedShardID,.nodeDisplayName] | @tsv'
 echo
 echo "----------------- OFFLINE NODES -----------------"
-echo -e "initialNodesPk\tVal?\tUp(s)\tDown(s)\tNode name"
+echo -e "initialNodesPk\tVal?\tUp(s)\tDown(s)\tversion\t\t\t\t\t\tShard\tNode name"
 curl --silent http://localhost:8080/node/heartbeatstatus | eval "grep $grepstring" | grep '"isActive":false' | \
-	jq -s -c --raw-output 'sort_by(.nodeDisplayName)[] | [.hexPublicKey[0:12],.isValidator,.totalUpTimeSec,.totalDownTimeSec,.nodeDisplayName] | @tsv'
+	jq -s -c --raw-output 'sort_by(.nodeDisplayName)[] | [.hexPublicKey[0:12],.isValidator,.totalUpTimeSec,.totalDownTimeSec,.versionNumber,.receivedShardID,.nodeDisplayName] | @tsv'
 echo "-------------------------------------------------"
 echo
